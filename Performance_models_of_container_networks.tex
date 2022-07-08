@@ -518,9 +518,57 @@ As always, this flexibility comes with a price. In this case the encapsulation a
 \noindent\textbf{Routing}\hspace{0.2cm}Yet another option to provide inter-host communication is to leverage routing. If a software router is deployed within each host, it might be a daemon container, then routing protocols such as BGP can be used to exchange reachability to containers running on different hosts and on different networks. Thanks to the flexibility of BGP, different VRFs can be created to allow overlapping IP ranges between hosts. This solution is limited to the protocols supported by the software router as well as the routing table scale. Moreover, packet routing also consumes CPU resources.
 
 \section{Benchmarks}
-Work in progress...
+In this section we present and classify a compendium of performance benchmarks for container networks available in the literature 
+\cite{IEEE_INFOCOM_2018:K. Suo}, \cite{HotConNet_17:Zhao}, \cite{Nakamura:2018}, \cite{Boeira:2021}, \cite{Bankston:2018}, \cite{CoNEXT:2018}, \cite{ICTC_2018:Park}, \cite{NOMS_2016:Claassen}. Thanks to this classification it is possible to identify the scenarios which have already been studied and which not. In table \ref{tab:1}, we summarize the characteristics of the studies focusing on standard container frameworks. We observe that most studies focus on a single pair of communicating container pairs. The exceptions are [8] and [13] which study intra- and inter-host pairs of containers. This use-case is of relevance, as it reflects the traffic patterns expected in microservice architectures. In both studies, the CPU is identified as bottleneck for the packet rate performance. And in table 2, we compare the characteristics of 3 studies using alternative means to achieve higher performance than using standard container network frameworks. It stands out, that to achieve higher performance all three frameworks make use of either DPDK, XDP/eBPF or a custom driver.  In all cases, the performance increase is due to the reduction of the processing overhead by different means. However, the bottleneck remains to be the CPU.
 
-\cite{IEEE_INFOCOM_2018:K. Suo}, \cite{HotConNet_17:Zhao}, \cite{Nakamura:2018}, \cite{Zhao:2017}, \cite{Boeira:2021}, \cite{Bankston:2018}, \cite{CoNEXT:2018}
+\begin{table*}[t]
+
+ \begin{center}
+
+   \caption{ Classification of Studies analysing the performance of standard container networking frameworks}\label{tab:1}
+
+   \begin{tabular}{c c c c c c c c c}
+     \hline
+     % after \\: \hline or \cline{col1-col2} \cline{col3-col4} ...
+     Study & Year & Inter- or & K8s-CNI/& Network mode & Comm. pairs & Measurement& Comments  \\ 
+      &  & Intra-host & Docker-plugins & & & tools &   \\ 
+     \hline
+     \cite{IEEE_INFOCOM_2018:K. Suo} & 2018 & both & Calico, Weave, Flannel & Host, NAT, VXLAN, BGP & 1 & Netperf, Sockperf, Sparkyfish,& & \\
+     & & & & & & OSU Benchmark & & \\     
+     \cite{HotConNet_17:Zhao} & 2017 & both & libnetwork & Veth, MACVLAN1 & 1 & iperf3, pktgen & & \\
+     \cite{Boeira:2021} & 2021 & intra & libnetwork & Bridge, MACVLAN, OvS & 50 & iperf, netcat, sockperf & &\\
+     \cite{Bankston:2018} & 2018 & inter & libnetwork, Flannel, & VLAN, BGP & 1 & iperf3 & Public clouds: AWS,\\
+      & & &Weave, Calico & & & & Azure, GCP \\
+     \cite{ICTC_2018:Park} & 2018 & both & Flannel & VXLAN, OvS & 1 & iperf & Openstack with Kuryr\\
+     \cite{NOMS_2016:Claassen} & 2016 & both & libnetwork & veth, ipvlan, Macvlan, OvS & 1-128 & iperf3 & &\\
+     \hline 
+
+   \end{tabular}
+
+ \end{center}
+\end{table*} 
+
+\begin{table*}[h]
+
+ \begin{center}
+
+   \caption{ Classification of Studies analysing the performance of special container networking frameworks}\label{tab:1}
+
+   \begin{tabular}{c c c c c c c c c}
+     \hline
+     % after \\: \hline or \cline{col1-col2} \cline{col3-col4} ...
+     Study & Year & Inter- or & K8s-CNI/& Network mode & Comm. pairs & Measurement& Comments  \\ 
+      &  & Intra-host & Docker-plugins & & & tools &   \\ 
+     \hline
+     \cite{CoNEXT:2018} & 2018 & inter & Cilium & eBPF/XDP vs. DPDK & 1 & trex & Artifacts evaluated and reusable & \\
+     \cite{Nakamura:2018} & 2018 & intra & Custom proto. & AF\_Graft & 50 & iperf3, sockperf3 & \\     
+     \cite{HotNets:16:FreeFlow} & 2016 & both & Weave and Custom proto. & MPI/DPDK vs. VXLAN &1 & iperf & & \\
+     \hline 
+
+   \end{tabular}
+
+ \end{center}
+\end{table*} 
 
 \section{Models}
 Having a precise mathematical model whose parameters can be manipulated to observe possible reactions is a very powerful tool. However, modelling complex large-scale systems as a containers network is a complex task. The number of abstraction layers, concurrent processes and middleware makes modelling with high precision an intractable task. This does not mean that it shouldn't be done at all. With the appropriate simplifications and assumptions, a model can provide an approximate result saving a lot of simulation and/or experimentation time. Further studies can follow if the result yielded by the model is not a show stopper.
@@ -545,29 +593,27 @@ To evaluate the applicability of the different container networks, it is importa
 \subsection{Performance}
 
 \subsubsection{Packet size}
-Note that it is only slightly more expensive to send a 1.5KB packet than sending a 64B packet \cite{Rizzo:2012}. For this reason, it is useful to express throughput in packets per second, pps, and indicate the packet size. The average packet size that a container needs to send, receive or manipulate has consequently a big impact on the throughput. Smaller packet sizes imply more packets, what in turn means more CPU cycles being consumed.
+Note that it is only slightly more expensive to send a 1.5KB packet than sending a 64B packet \cite{Rizzo:2012}. For this reason, it is useful to to provide the packet rate in packets per second, pps, and indicate the packet size. The average packet size that a container needs to send, receive or manipulate has consequently a big impact on the throughput. Smaller packet sizes imply more packets, what in turn means more CPU cycles being consumed.
 
 \subsubsection{Transport Protocol}
-Work in progress...
+The linux kernel includes optimizations for TCP, such as GRO \cite{GRO}, that allows TCP to perform better than UDP \cite{HotConNet_17:Zhao}. This is a possible explanation to the important performance degradation observed in \cite{NOMS_2016:Claasen}. In this study, the authors observe that the UDP throughput is 3.5 times lower than the TCP throughput when using the ipvlan and macvlan drivers.
 
 \subsubsection{Latency budget}
 To reduce the number of interruptions and sustain high throughput rates when the incoming rate is high,  packets are buffered before being sent to the network interface card \cite{DEBS_20:Stylianopoulos}. \cite{ANCS:Gallenmüller} also points that in high-performance IO frameworks larger buffer sizes increase the throughput but also the average latency. Therefore, if the latency budget is limited by the application requirements, the achievable throughput must be reduced by means of reducing the buffer size.
 \subsubsection{Virtualization Layers}
 The number of virtualization layers causes significant overheads. When running containers inside VMs, the packet's data is copied from the hypervisor's kernel space to the user space, where the VM resides. Once in the VM, the virtualized kernel must again copy the data to the VM’s user space. This additional copy actions as well as context swapping results in performance degradation. In other words, adding virtualization layers increases the packet's critical path. \cite{IEEE_INFOCOM_2018:K. Suo} reports a 42\% loss in the TCP throughput when running the containers inside a VM.
 \subsubsection{Containers-Resources ratio}
-Another factor is the number of containers within one host which must compete for resources[]. Most of the container network options make a noticeable use of CPU resources for either NAT or overlay services. Therefore, an elevated number of containers competing for CPU resources interfere each other with multiple context changes. Furthermore, if the CPU becomes the bottleneck, then packets need to be queued incurring additional delays. To remedy this, CPUs can be pinned to specific containers so that they become exclusive. \cite{HotConNet_17:Zhao} notes that because of the auto NUMA scheduling, containers in the same VM might have better performance than in the same bare metal host. This effect is equivalent to the one produced by CPU pinning but causing virtualization overhead.
+Another factor is the number of containers within one host which must compete for resources. Most of the container network options make a noticeable use of CPU resources for either NAT or overlay services. Therefore, an elevated number of containers competing for CPU resources interfere each other with multiple context changes. Furthermore, if the CPU becomes the bottleneck, then packets need to be queued incurring additional delays. To remedy this, CPUs can be pinned to specific containers so that they become exclusive. \cite{Boeira:2021} shows this effect, namely that the average throughput decreases and the flow completion times increase with an increasing containers-to-core ratio. 
 \subsubsection{Network election}
-\cite{IEEE_INFOCOM_2018:K. Suo} shows that containers in the same host using bridge mode incur 18\% and 30\% throughput loss in upload and download, respectively in comparison to the baseline (host). This loss is even greater when considering inter-host communication. [] quantifies to X\% the degradation in comparison with.
+\cite{IEEE_INFOCOM_2018:K. Suo} shows that containers in the same host using bridge mode incur 18\% and 30\% throughput loss in upload and download, respectively in comparison to the baseline (host). This loss is even greater when considering inter-host communication. 
 
 \subsubsection{Traffic patters}
-Work in progress...
-
+We differentiate between East-West and North-South traffic patterns. The first ones are common in microservice architectures, where a request to some front-end service might trigger a chain of back-end information exchanges. The second can be found when retrieving stored files as the destination of the traffic is outside the data-center. North-South traffic will experience more operations on the packet headers and will therefore express a lower performance than the East-West traffic.
 \subsection{Mobility}
 Work in progress...
 
 \subsubsection{Network Coupling}
-Work in progress...
-
+		
 \subsubsection{Orchestration}
 Work in progress...
 
@@ -727,8 +773,9 @@ Luigi Rizzo. 2012. Netmap: a novel framework for fast packet I/O. In Proceedings
 \bibitem{Nakamura:2018}
 Ryo Nakamura, Yuji Sekiya, and Hajime Tazaki. 2018. Grafting sockets for fast container networking. In Proceedings of the 2018 Symposium on Architectures for Networking and Communications Systems (ANCS '18). Association for Computing Machinery, New York, NY, USA, 15–27. https://doi.org/10.1145/3230718.3230723
 
-\bibitem{Zhao:2017}
-Yang Zhao, Nai Xia, Chen Tian, Bo Li, Yizhou Tang, Yi Wang, Gong Zhang, Rui Li, and Alex X. Liu. 2017. Performance of Container Networking Technologies. In Proceedings of the Workshop on Hot Topics in Container Networking and Networked Systems (HotConNet '17). Association for Computing Machinery, New York, NY, USA, 1–6. https://doi.org/10.1145/3094405.3094406
+\bibitem{HotNets:16:FreeFlow}
+Tianlong Yu, Shadi Abdollahian Noghabi, Shachar Raindel, Hongqiang Liu, Jitu Padhye, and Vyas Sekar. 2016. FreeFlow: High Performance Container Networking. In Proceedings of the 15th ACM Workshop on Hot Topics in Networks (HotNets '16). Association for Computing Machinery, New York, NY, USA, 43–49. https://doi.org/10.1145/3005745.3005756
+
 
 \bibitem{Boeira:2021}
 C. Boeira, M. Neves, T. Ferreto and I. Haque, "Characterizing network performance of single-node large-scale container deployments," 2021 IEEE 10th International Conference on Cloud Networking (CloudNet), 2021, pp. 97-103, doi: 10.1109/CloudNet53349.2021.9657138.
@@ -738,6 +785,12 @@ R. Bankston and J. Guo, "Performance of Container Network Technologies in Cloud 
 
 \bibitem{CoNEXT:2018}
 Toke Høiland-Jørgensen, Jesper Dangaard Brouer, Daniel Borkmann, John Fastabend, Tom Herbert, David Ahern, and David Miller. 2018. The eXpress data path: fast programmable packet processing in the operating system kernel. In Proceedings of the 14th International Conference on emerging Networking EXperiments and Technologies (CoNEXT '18). Association for Computing Machinery, New York, NY, USA, 54–66. https://doi.org/10.1145/3281411.3281443
+
+\bibitem{ICTC_2018:Park}
+Y. Park, H. Yang and Y. Kim, "Performance Analysis of CNI (Container Networking Interface) based Container Network," 2018 International Conference on Information and Communication Technology Convergence (ICTC), 2018, pp. 248-250, doi: 10.1109/ICTC.2018.8539382.
+
+\bibitem{NOMS_2016:Claassen}
+J. Claassen, R. Koning and P. Grosso, "Linux containers networking: Performance and scalability of kernel modules," NOMS 2016 - 2016 IEEE/IFIP Network Operations and Management Symposium, 2016, pp. 713-717, doi: 10.1109/NOMS.2016.7502883.
 
 \bibitem{SIGARCH_2017:Yang}
 Yang Hu, Mingcong Song, and Tao Li. 2017. Towards "Full Containerization" in Containerized Network Function Virtualization. SIGARCH Comput. Archit. News 45, 1 (March 2017), 467–481. https://doi.org/10.1145/3093337.3037713
@@ -774,6 +827,9 @@ T. Murata, "Petri nets: Properties analysis and applications", Proceedings of th
 
 \bibitem{kernel_stack}
 \url{http://affix.sourceforge.net/affix-doc/c190.html}
+
+\bibitem{GRO}
+H. Xu, “Generic receive offload,” in Japan Linux Symposium, 2009
 
 \end{thebibliography}
 
